@@ -1,8 +1,10 @@
 package io.buoyant.linkerd.config
 
+import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import com.fasterxml.jackson.databind.module.SimpleModule
+import com.fasterxml.jackson.databind.ser.std.StdSerializer
 import com.fasterxml.jackson.databind.{DeserializationContext, ObjectMapper}
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
@@ -10,7 +12,11 @@ import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle.util.LoadService
 import scala.reflect.{ClassTag, classTag}
 
-abstract class ConfigDeserializer[T: ClassTag] extends StdDeserializer[T](Parser.jClass[T]) {
+private[config] trait Registration {
+  def register(module: SimpleModule): SimpleModule
+}
+
+abstract class ConfigDeserializer[T: ClassTag] extends StdDeserializer[T](Parser.jClass[T]) with Registration {
   def register(module: SimpleModule): SimpleModule = module.addDeserializer(Parser.jClass[T], this)
 
   protected def catchMappingException(ctxt: DeserializationContext)(t: => T): T =
@@ -18,6 +24,10 @@ abstract class ConfigDeserializer[T: ClassTag] extends StdDeserializer[T](Parser
       case arg: IllegalArgumentException =>
         throw ctxt.mappingException(arg.getMessage)
     }
+}
+
+abstract class ConfigSerializer[T: ClassTag] extends StdSerializer[T](Parser.jClass[T]) with Registration {
+  def register(module: SimpleModule): SimpleModule = module.addSerializer(Parser.jClass[T], this)
 }
 
 object Parser {
@@ -33,7 +43,7 @@ object Parser {
    */
   def objectMapper(config: String): ObjectMapper with ScalaObjectMapper = {
     val factory = if (peekJsonObject(config)) new JsonFactory() else new YAMLFactory()
-    val customTypes = LoadService[ConfigDeserializer[_]]
+    val customTypes = (LoadService[ConfigDeserializer[_]] ++ LoadService[ConfigSerializer[_]])
       .foldLeft(new SimpleModule("linkerd custom types")) { (module, d) =>
         d.register(module)
       }
@@ -41,6 +51,9 @@ object Parser {
     val mapper = new ObjectMapper(factory) with ScalaObjectMapper
     mapper.registerModule(DefaultScalaModule)
     mapper.registerModule(customTypes)
+    mapper.setSerializationInclusion(Include.NON_NULL)
     mapper
   }
+
+  def jsonObjectMapper: ObjectMapper with ScalaObjectMapper = objectMapper("{")
 }

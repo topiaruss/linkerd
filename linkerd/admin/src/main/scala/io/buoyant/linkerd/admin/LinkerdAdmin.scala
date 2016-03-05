@@ -1,5 +1,6 @@
 package io.buoyant.linkerd.admin
 
+import com.fasterxml.jackson.databind.SerializationFeature
 import com.twitter.app.App
 import com.twitter.finagle._
 import com.twitter.finagle.http.{HttpMuxer, Request, Response}
@@ -8,8 +9,10 @@ import com.twitter.server.Admin.Path
 import com.twitter.server.handler.{SummaryHandler => TSummaryHandler, _}
 import com.twitter.server.view.{IndexView, TextBlockView}
 import io.buoyant.linkerd.Linker
+import io.buoyant.linkerd.Linker.LinkerConfig
+import io.buoyant.linkerd.config.Parser
 
-class LinkerdAdmin(app: App, linker: Linker) {
+class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) {
 
   private[this] val log = Logger()
 
@@ -48,6 +51,7 @@ class LinkerdAdmin(app: App, linker: Linker) {
     }
 
   private[this] def linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
+
     "/" -> new SummaryHandler(linker),
     "/files/" -> (StaticFilter andThen ResourceHandler.fromDirectoryOrJar(
       baseRequestPath = "/files/",
@@ -57,7 +61,8 @@ class LinkerdAdmin(app: App, linker: Linker) {
     "/delegator" -> DelegateHandler.ui(linker),
     "/delegator.json" -> DelegateHandler.api(linker),
     "/routers.json" -> new RouterHandler(linker),
-    "/metrics" -> MetricsHandler
+    "/metrics" -> MetricsHandler,
+    "/config.json" -> new ConfigHandler(config)
   )
 
   private[this] def metricsRoutes: Seq[(String, Service[Request, Response])] = Seq(

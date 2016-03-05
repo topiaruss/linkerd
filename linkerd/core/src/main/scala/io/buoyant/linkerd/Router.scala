@@ -105,6 +105,9 @@ trait RouterConfig {
   var _label: Option[String] = None
   var dstPrefix: Option[String] = None
 
+  @JsonProperty("protocol")
+  def protocolName = protocol.name
+
   @JsonIgnore
   def label = _label.getOrElse(protocol.name)
 

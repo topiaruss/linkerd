@@ -1,10 +1,10 @@
 package io.buoyant.linkerd.config.types
 
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.DeserializationContext
+import com.fasterxml.jackson.core.{JsonGenerator, JsonParser}
+import com.fasterxml.jackson.databind.{SerializerProvider, DeserializationContext}
 import com.twitter.finagle.thrift.Protocols
-import io.buoyant.linkerd.config.ConfigDeserializer
-import org.apache.thrift.protocol.{TCompactProtocol, TProtocolFactory}
+import io.buoyant.linkerd.config.{ConfigSerializer, ConfigDeserializer}
+import org.apache.thrift.protocol.{TBinaryProtocol, TCompactProtocol, TProtocolFactory}
 
 class ThriftProtocolDeserializer extends ConfigDeserializer[TProtocolFactory] {
   override def deserialize(jp: JsonParser, ctxt: DeserializationContext): TProtocolFactory =
@@ -16,4 +16,19 @@ class ThriftProtocolDeserializer extends ConfigDeserializer[TProtocolFactory] {
           throw new IllegalArgumentException(s"unsupported thrift protocol $protocol")
       }
     }
+}
+
+class ThriftProtocolSerializer extends ConfigSerializer[TProtocolFactory] {
+  override def serialize(
+    value: TProtocolFactory,
+    jgen: JsonGenerator,
+    provider: SerializerProvider
+  ): Unit = {
+    val protocol = value match {
+      case _: TBinaryProtocol.Factory => "binary"
+      case _: TCompactProtocol.Factory => "compact"
+      case _ => "unknown"
+    }
+    jgen.writeString(protocol)
+  }
 }
