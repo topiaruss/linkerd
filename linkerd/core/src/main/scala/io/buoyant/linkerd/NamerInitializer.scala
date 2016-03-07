@@ -31,7 +31,7 @@ object NamingFactory {
 @JsonAutoDetect(fieldVisibility = Visibility.PUBLIC_ONLY)
 trait NamingFactoryConfig {
 
-  def kind = getClass.getName
+  def kind = getClass.getCanonicalName
 
   /**
    * Construct a NamingFactory.
