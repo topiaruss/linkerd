@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonProperty, JsonTypeInfo}
 import com.twitter.finagle.{Path, Namer => FinagleNamer, Stack}
 import com.twitter.finagle.naming.NameInterpreter
+import io.buoyant.linkerd.config.ConfigInitializer
 
 sealed trait NamingFactory
 

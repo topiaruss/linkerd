@@ -41,7 +41,10 @@ object Parser {
    * be Json. We expose this publicly for testing purposes (to allow easy
    * parsing of config subtrees) at the moment.
    */
-  def objectMapper(config: String): ObjectMapper with ScalaObjectMapper = {
+  def objectMapper(
+    config: String,
+    configInitializers: Seq[ConfigInitializer]
+  ): ObjectMapper with ScalaObjectMapper = {
     val factory = if (peekJsonObject(config)) new JsonFactory() else new YAMLFactory()
     val customTypes = (LoadService[ConfigDeserializer[_]] ++ LoadService[ConfigSerializer[_]])
       .foldLeft(new SimpleModule("linkerd custom types")) { (module, d) =>
@@ -52,8 +55,18 @@ object Parser {
     mapper.registerModule(DefaultScalaModule)
     mapper.registerModule(customTypes)
     mapper.setSerializationInclusion(Include.NON_NULL)
+
+    // Subtypes must not conflict
+    configInitializers.groupBy(_.configId).collect {
+      case (id, cis) if cis.size > 1 =>
+        throw ConflictingSubtypes(cis(0).namedType, cis(1).namedType)
+    }
+    for (ci <- configInitializers) ci.registerSubtypes(mapper)
+
     mapper
   }
 
-  def jsonObjectMapper: ObjectMapper with ScalaObjectMapper = objectMapper("{")
+  def jsonObjectMapper(
+    configInitializers: Seq[ConfigInitializer]
+  ): ObjectMapper with ScalaObjectMapper = objectMapper("{", configInitializers)
 }

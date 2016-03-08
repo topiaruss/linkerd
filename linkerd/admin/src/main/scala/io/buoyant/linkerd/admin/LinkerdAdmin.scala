@@ -62,7 +62,7 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) {
     "/delegator.json" -> DelegateHandler.api(linker),
     "/routers.json" -> new RouterHandler(linker),
     "/metrics" -> MetricsHandler,
-    "/config.json" -> new ConfigHandler(config)
+    "/config.json" -> new ConfigHandler(config, Linker.configInitializers)
   )
 
   private[this] def metricsRoutes: Seq[(String, Service[Request, Response])] = Seq(
