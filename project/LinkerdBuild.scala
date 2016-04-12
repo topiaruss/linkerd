@@ -369,6 +369,14 @@ object LinkerdBuild extends Base {
 
     val examples = projectDir("namerd/examples")
       .withExamples(Namerd.all, exampleConfigs)
+
+    // TODO: remove or consolidate dependencies
+    val dcosBootstrap = projectDir("namerd/dcos-bootstrap")
+      .dependsOn(core, configCore, Router.http,
+        Iface.controlHttp, Iface.interpreterThrift,
+        Namer.consul, Namer.fs, Namer.k8s, Namer.marathon, Namer.serversets,
+        Storage.inMemory, Storage.zk
+      ).withBuildProperties()
   }
 
   val validator = projectDir("validator")
@@ -409,6 +417,7 @@ object LinkerdBuild extends Base {
   val namerd = Namerd.all
   val namerdExamples = Namerd.examples
   val namerdCore = Namerd.core
+  val namerdDcosBootstrap = Namerd.dcosBootstrap
   val namerdStorageInMemory = Namerd.Storage.inMemory
   val namerdStorageZk = Namerd.Storage.zk
   val namerdStorage = Namerd.Storage.all
