@@ -372,11 +372,9 @@ object LinkerdBuild extends Base {
 
     // TODO: remove or consolidate dependencies
     val dcosBootstrap = projectDir("namerd/dcos-bootstrap")
-      .dependsOn(core, configCore, Router.http,
-        Iface.controlHttp, Iface.interpreterThrift,
-        Namer.consul, Namer.fs, Namer.k8s, Namer.marathon, Namer.serversets,
-        Storage.inMemory, Storage.zk
-      ).withBuildProperties()
+      .dependsOn(core, configCore, Storage.zk)
+      .withBuildProperties()
+      .settings(mainClass := Some("io.buoyant.namerd.DcosBootstrap"))
   }
 
   val validator = projectDir("validator")

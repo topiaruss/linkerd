@@ -3,11 +3,14 @@ package io.buoyant.namerd
 import com.twitter.finagle.Dtab
 import com.twitter.finagle.serverset2.ZkClient
 import com.twitter.io.Buf
+import com.twitter.util.Await
 import io.buoyant.admin.App
+import io.buoyant.config.Parser
+import io.buoyant.namerd.storage.experimental.{ZkDtabStoreInitializer, zk}
 import java.io.File
 import scala.io.Source
 
-object Main extends App {
+object DcosBootstrap extends App {
 
   val defaultNs = "default"
   val defaultDtab = Dtab.read(
@@ -23,29 +26,21 @@ object Main extends App {
   def main(): Unit = {
     args match {
       case Array(path) =>
-        val config = loadNamerd(path)
-        val storage = config.storage
+        val config = loadZkConfig(path)
 
-        if (!storage.isInstanceOf[io.buoyant.namerd.storage.experimental.zk]) {
-          exitOnError(s"config file does not specify zk storage: ${config.storage}")
-        }
-
-        val zkStorage = storage.asInstanceOf[io.buoyant.namerd.storage.experimental.zk]
-
-        // TODO: share with ZkDtabStoreInitializer
         val zkClient = new ZkClient(
-          zkStorage.hosts.mkString(","),
-          zkStorage.pathPrefix.getOrElse("/dtabs"),
-          zkStorage.sessionTimeout
+          config.hosts.mkString(","),
+          config.pathPrefix.getOrElse("/dtabs"),
+          config.sessionTimeout
         )
 
-        zkClient.create(defaultNs, Buf.Utf8(defaultDtab.show))
+        Await.result(zkClient.create(defaultNs, Buf.Utf8(defaultDtab.show)))
 
       case _ => exitOnError("usage: namerd-dcos-bootstrap path/to/config")
     }
   }
 
-  private def loadNamerd(path: String): NamerdConfig = {
+  private def loadZkConfig(path: String): zk = {
     val configText = path match {
       case "-" =>
         Source.fromInputStream(System.in).mkString
@@ -54,7 +49,12 @@ object Main extends App {
         if (!f.isFile) throw new IllegalArgumentException(s"config is not a file: $path")
         Source.fromFile(f).mkString
     }
-
-    NamerdConfig.loadNamerd(configText)
+    val mapper = Parser.objectMapper(configText, Seq(Seq(new ZkDtabStoreInitializer)))
+    val root = mapper.readTree(configText)
+    val storage = root.findValue("storage")
+    val kind = storage.get("kind").textValue
+    if (kind != "io.buoyant.namerd.storage.experimental.zk")
+      exitOnError(s"config file does not specify zk storage: $kind")
+    mapper.treeToValue[zk](storage)
   }
 }
