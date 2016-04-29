@@ -16,9 +16,15 @@ var RouterClients = (function() {
 
     routers.onAddedClients(addClients);
 
-    _.map(routers.clients(routerName), initializeClient);
+    var clients = routers.clients(routerName);
+    if (clients.length > 0) {
+      _.map(clients, initializeClient);
+    } else {
+      $clientEl.hide();
+    }
 
     function initializeClient(client) {
+      $clientEl.show();
       var colorsForClient = clientToColor[client.label];
       var $container = $(clientContainerTemplate({
         clientColor: colorsForClient.color
